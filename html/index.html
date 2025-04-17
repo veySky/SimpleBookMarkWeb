@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>lin's书签</title>
+    <link rel="stylesheet" href="./static/all.min.css">
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --background: #f5f7fa;
+        }
+
+        body {
+            background: var(--background);
+            margin: 20px auto;
+            padding: 20px;
+            max-width: 1200px;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 15px 20px;
+            margin-bottom: 25px;
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .search-box:focus {
+            outline: none;
+            box-shadow: 0 2px 12px rgba(52,152,219,0.3);
+        }
+
+        .bookmark-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            padding: 15px;
+        }
+
+        .link-item {
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .link-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+
+        /* 图标样式 */
+        .link-content {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .favicon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: var(--background);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .favicon i {
+            font-size: 20px;
+            color: var(--accent);
+        }
+
+        .link-info {
+            flex-grow: 1;
+        }
+
+        .link-title {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+
+        .link-url {
+            font-size: 0.9em;
+            color: #666;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+        }
+
+        /* 加载动画 */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--accent);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+         /* 新增切换按钮样式 */
+         .env-switcher {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+        }
+
+        .env-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #e0e0e0;
+        }
+
+        .env-btn.active {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 2px 8px rgba(52,152,219,0.3);
+        }
+
+        /* 更新卡片布局 */
+        .link-url {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .env-tag {
+            font-size: 0.8em;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: var(--background);
+        }
+
+        /* 添加无效地址提示样式 */
+        .link-item.invalid {
+            position: relative;
+            opacity: 0.6;
+            background: #fff5f5;
+        }
+
+        .link-item.invalid:after {
+            content: "不可用";
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            font-size: 0.8em;
+            color: #ff4444;
+        }
+
+        .login-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .login-box {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 300px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .login-btn {
+            background: var(--accent);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head> 
+<body>
+     <!-- 新增登录框 -->
+     <div class="login-mask" id="loginMask">
+        <div class="login-box">
+            <h2>系统登录</h2>
+            <input type="text" id="username" class="login-input" placeholder="用户名">
+            <input type="password" id="password" class="login-input" placeholder="密码">
+            <button class="login-btn" onclick="handleLogin()">登录</button>
+        </div>
+    </div>
+    <div class="env-switcher">
+        <button class="env-btn active" data-env="external">外网</button>
+        <button class="env-btn" data-env="internal">内网</button>
+    </div>
+    <input type="text" class="search-box" placeholder="🔍 搜索书签...">
+    <div class="bookmark-grid" id="bookmarkContainer">
+        <div class="loader"></div>
+    </div>
+    <script src="./static/crypto-js.min.js"></script>
+
+    <script>
+         let currentEnv = 'external';
+         // 配置增加认证信息
+         const config = {
+            jsonPath: './bookmarks.json',
+            openNewTab: true,
+            // 简单版用户配置（生产环境应使用加密存储）
+            auth: {
+                users: [
+                    {
+                        username: 'admin',
+                        password: '3a49291a45a1c96c2d4248c508d6e0ab' // md5('admin123')
+                    }
+                ],
+                tokenKey: 'bookmark_token'
+            }
+        };
+        // const config 
+
+        function md5(message) {
+	    return   CryptoJS.MD5(message).toString();
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem(config.auth.tokenKey);
+            if (!token || !validateToken(token)) {
+                showLogin();
+            } else {
+                initApp();
+            }
+        });
+        
+         // 登录处理函数
+         async function handleLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            // 简单MD5加密验证
+            const encryptedPwd = md5(password);
+            const validUser = config.auth.users.find(u => 
+                u.username === username && 
+                u.password === encryptedPwd
+            );
+
+            if (validUser) {
+                generateToken(username);
+                hideLogin();
+                initApp();
+            } else {
+                alert('用户名或密码错误');
+            }
+        }
+
+        // 生成访问令牌
+        function generateToken(username) {
+            const token = btoa(`${username}:${Date.now()}`);
+            localStorage.setItem(config.auth.tokenKey, token);
+        }
+
+        // 验证令牌有效性
+        function validateToken(token) {
+            try {
+                const [username, timestamp] = atob(token).split(':');
+                // 令牌有效期24小时
+                return Date.now() - parseInt(timestamp) < 86400000;
+            } catch {
+                return false;
+            }
+        }
+
+        // 显示/隐藏登录框
+        function showLogin() {
+            document.getElementById('loginMask').style.display = 'flex';
+            document.querySelector('.env-switcher').style.display = 'none';
+            document.querySelector('.bookmark-grid').style.display = 'none';
+        }
+
+        function hideLogin() {
+            document.getElementById('loginMask').style.display = 'none';
+            document.querySelector('.env-switcher').style.display = 'block';
+            document.querySelector('.bookmark-grid').style.display = 'grid';
+        }
+
+        
+
+        // 初始化应用
+        async function initApp() {
+            try {
+                const response = await fetch(config.jsonPath);
+                window.bookmarksData = await response.json();
+                updateBookmarks();
+                initSearch();
+                initEnvSwitcher();
+            } catch (error) {
+                console.error('加载失败:', error);
+                bookmarkContainer.innerHTML = `<div class="error">配置加载失败</div>`;
+            }
+        }
+
+        // 更新渲染函数
+        function updateBookmarks() {
+            const container = document.getElementById('bookmarkContainer');
+            container.innerHTML = window.bookmarksData.bookmarks.map(bookmark => {
+                // 添加URL有效性检查
+                const getValidUrl = (url) => {
+                    try {
+                        return new URL(url);
+                    } catch {
+                        return null;
+                    }
+                };
+
+                // 优先获取当前环境地址，若无效则使用external
+                let url = bookmark.env[currentEnv] || bookmark.env.external;
+                let parsedUrl = getValidUrl(url);
+                
+                // 双重验证确保URL有效
+                if (!parsedUrl) {
+                    url = bookmark.env.external;
+                    parsedUrl = getValidUrl(url);
+                }
+
+                // 最终回退方案
+                const fallbackUrl = parsedUrl ? url : '#invalid-url';
+                const hostname = parsedUrl ? parsedUrl.hostname : '无效地址';
+
+                const showInternal = !!bookmark.env.internal && getValidUrl(bookmark.env.internal);
+                
+                return `
+                    <div class="link-item" data-url="${fallbackUrl}">
+                        <div class="link-content">
+                            <div class="favicon">
+                                <i class="${bookmark.icon}"></i>
+                            </div>
+                            <div class="link-info">
+                                <div class="link-title">${bookmark.title}</div>
+                                <div class="link-url">
+                                    <span>${hostname}</span>
+                                    ${showInternal ? `<span class="env-tag">${currentEnv === 'internal' ? '内网' : '外网'}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            bindClickEvents();
+        }
+
+        // 新增环境切换功能
+        function initEnvSwitcher() {
+            document.querySelectorAll('.env-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    currentEnv = this.dataset.env;
+                    document.querySelectorAll('.env-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    updateBookmarks();
+                });
+            });
+        }
+
+        // 更新搜索功能
+        function initSearch() {
+            document.querySelector('.search-box').addEventListener('input', function(e) {
+                const term = e.target.value.toLowerCase();
+                document.querySelectorAll('.link-item').forEach(item => {
+                    const title = item.querySelector('.link-title').textContent.toLowerCase();
+                    const url = new URL(item.dataset.url).hostname.toLowerCase();
+                    item.style.display = (title.includes(term) || url.includes(term)) ? 'block' : 'none';
+                });
+            });
+        }
+
+       // 更新点击事件处理
+        function bindClickEvents() {
+            document.querySelectorAll('.link-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const url = this.dataset.url;
+                    try {
+                        new URL(url); // 验证URL有效性
+                        window.open(url, '_blank', 'noopener,noreferrer');
+                    } catch {
+                        alert('当前地址不可用: ' + url);
+                        this.style.opacity = 0.5;
+                        this.style.cursor = 'not-allowed';
+                    }
+                });
+            });
+        }
+  
+    </script>
+</body>
+</html>

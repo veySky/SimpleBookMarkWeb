@@ -1,0 +1,12 @@
+{
+    "bookmarks": [
+      {
+        "title": "github",
+        "icon": "fas fa-git",
+        "env": {
+          "external": "http://github.com",
+          "internal": "http://github.com"
+        }
+      } 
+    ]
+}
